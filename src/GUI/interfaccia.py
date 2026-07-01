@@ -77,7 +77,6 @@ def mostra_menu_principale(username, ruolo):
         AZZURRO + "==========================================================================================" + RESET)
     livello_accesso = "MASTER" if ruolo == "super_user" else "USER"
     testo_info = f"👤 Utente connesso: {username}  |  🔑 Livello di Accesso: {livello_accesso}"
-    # Centriamo la stringa dinamicamente calcolando la larghezza fissa (90 caratteri)
     print(BIANCO + f"{testo_info:^90}" + RESET)
     print(
         AZZURRO + "==========================================================================================" + RESET)
@@ -91,14 +90,16 @@ def mostra_menu_principale(username, ruolo):
         BIANCO + "   [3] Modifica password di un dominio             [4] Visualizza password in CHIARO (Solo Master)" + RESET)
     print(
         BIANCO + "   [5] Registra Nuovo Utente                       [6] Elimina Utente Esistente (Solo Master)" + RESET)
-    print(BIANCO + "   [7] Esci dall'applicazione" + RESET)
+
+    # Spostate più in basso di una riga (\n aggiuntivo) e affiancate
+    print("\n" + BIANCO + "   [7] Cambia Utente                               [8] Esci dall'applicazione" + RESET)
     print(
         AZZURRO + "------------------------------------------------------------------------------------------" + RESET)
 
-    return input("\n👉 Scegli un'opzione (1-7): ").strip()
+    return input("\n👉 Scegli un'opzione (1-8): ").strip()
 
 
-def interfaccia_aggiungi(vault_attivo):
+def interfaccia_aggiungi(vault_attivo, utente_corrente):
     """Gestisce l'inserimento visivo di una nuova credenziale."""
     print(BIANCO + "\n--- AGGIUNGI NUOVA CREDENZIALE ---" + RESET)
     servizio = input("Inserisci il dominio del sito (es. google.com): ").strip()
@@ -112,13 +113,13 @@ def interfaccia_aggiungi(vault_attivo):
     username = input("Inserisci l'username o l'email: ").strip()
     password = safe_getpass("Inserisci la password: ")
 
-    vault_attivo.salva_credenziale(dominio_pulito, username, password)
+    vault_attivo.salva_credenziale(utente_corrente, dominio_pulito, username, password)
     print(AZZURRO + f"✅ Credenziale per '{dominio_pulito}' salvata correttamente." + RESET)
     input("\n⌨️  Premere Invio per tornare al menu principale...")
 
 
-def interfaccia_cerca(vault_attivo):
-    """Gestisce l'interfaccia di ricerca e avvia la routine di Autofill."""
+def interfaccia_cerca(vault_attivo, utente_corrente):
+    """Gestisce l'interfaccia di ricerca limitata all'utente corrente."""
     print(BIANCO + "\n--- CERCA E AUTOFILL (SICURO) ---" + RESET)
     url_ricerca = input("Inserisci il sito/dominio da cercare: ").strip()
 
@@ -126,7 +127,7 @@ def interfaccia_cerca(vault_attivo):
     dominio_pulito = detector.estrai_dominio(url_ricerca)
 
     sicuro, messaggio = detector.verifica_dominio(url_ricerca)
-    credenziali = vault_attivo.cerca_credenziale(dominio_pulito)
+    credenziali = vault_attivo.cerca_credenziale(utente_corrente, dominio_pulito)
 
     if credenziali:
         print("\n" + BLU_SCURO + "=" * 40 + RESET)
@@ -195,56 +196,79 @@ def interfaccia_cerca(vault_attivo):
         pyperclip.copy("")
         print(AZZURRO + "✅ Autofill completato e appunti di sistema ripuliti!" + RESET)
     else:
-        print(f"\n❌ Nessuna credenziale trovata per '{dominio_pulito}'.")
+        print(f"\n❌ Nessuna credenziale trouvata per '{dominio_pulito}'.")
 
     input("\n⌨️  Premere Invio per tornare al menu principale...")
 
 
-def interfaccia_modifica(vault_attivo):
-    """Gestisce la modifica di una password per un dominio esistente."""
+def interfaccia_modifica(vault_attivo, utente_corrente):
+    """Mostra i domini salvati solo dall'utente loggato e ne gestisce la modifica."""
     print(BIANCO + "\n--- MODIFICA PASSWORD DOMINIO ---" + RESET)
+
+    all_dati = vault_attivo._carica_dati()
+    dati_utente = all_dati.get(utente_corrente, {})
+
+    if not dati_utente:
+        print(NERO + "⚠️ Non hai ancora salvato nessuna password. Non c'è nulla da modificare." + RESET)
+        input("\n⌨️  Premere Invio per tornare al menu principale...")
+        return
+
+    print(AZZURRO + "\nI tuoi domini attualmente salvati:" + RESET)
+    for dom in dati_utente.keys():
+        print(BIANCO + f" 🌐 {dom}" + RESET)
+    print(AZZURRO + "----------------------------------------\n" + RESET)
+
     servizio = input("Inserisci il dominio del sito da modificare (es. google.com): ").strip()
 
     detector = PhishingDetector()
     dominio_pulito = detector.estrai_dominio(servizio)
 
-    if vault_attivo.cerca_credenziale(dominio_pulito):
+    if vault_attivo.cerca_credenziale(utente_corrente, dominio_pulito):
         nuova_pwd = safe_getpass("Inserisci la NUOVA password: ")
-        vault_attivo.modifica_password(dominio_pulito, nuova_pwd)
-        print(AZZURRO + f"✅ Password per '{dominio_pulito}' modificata con successo!" + RESET)
+        if vault_attivo.modifica_password(utente_corrente, dominio_pulito, nuova_pwd):
+            print(AZZURRO + f"✅ Password per '{dominio_pulito}' modificata con successo!" + RESET)
+        else:
+            print(NERO + "❌ Errore durante l'aggiornamento della password." + RESET)
     else:
-        print(NERO + f"❌ Nessun dominio trovato corrispondente a '{dominio_pulito}'." + RESET)
+        print(NERO + f"❌ Nessun tuo dominio trovato corrispondente a '{dominio_pulito}'." + RESET)
+
     input("\n⌨️  Premere Invio per tornare al menu principale...")
 
 
 def interfaccia_mostra_in_chiaro_tabellare(vault_attivo):
-    """Mostra all'admin TUTTE le credenziali nel database allargando le colonne per non tagliare le mail lunghe."""
-    print(BIANCO + "\n--- STRUMENTO MASTER: VISUALIZZA TUTTE LE PASSWORD IN CHIARO ---" + RESET)
+    """Mostra al MASTER la tabella globale con indicazione del proprietario per ogni record."""
+    print(BIANCO + "\n--- STRUMENTO MASTER: VISUALIZZA TUTTE LE PASSWORD GLOBALI IN CHIARO ---" + RESET)
 
-    dati_cifrati = vault_attivo._carica_dati()
+    all_dati = vault_attivo._carica_dati()
 
-    if not dati_cifrati:
-        print(NERO + "⚠️ Il database delle password è vuoto." + RESET)
+    ha_dati = any(all_dati[ut] for ut in all_dati) if all_dati else False
+    if not ha_dati:
+        print(NERO + "⚠️ Il database delle password è completamente vuoto." + RESET)
         input("\n⌨️  Premere Invio per tornare al menu principale...")
         return
 
-    # Allargate le colonne: 30 (dominio), 50 (username/email), 25 (password) -> Totale riga ~115 caratteri
-    print("\n" + AZZURRO + "=" * 112 + RESET)
-    print(BIANCO + f"{'DOMINIO (SITO)':<30} | {'USERNAME / EMAIL':<50} | {'PASSWORD IN CHIARO':<25}" + RESET)
-    print(AZZURRO + "=" * 112 + RESET)
+    # Allarghiamo leggermente la colonna del dominio per far spazio all'icona (da 30 a 34 caratteri)
+    print("\n" + AZZURRO + "=" * 129 + RESET)
+    print(
+        BIANCO + f"{'PROPRIETARIO':<20} | {'DOMINIO (SITO)':<34} | {'USERNAME / EMAIL':<40} | {'PASSWORD IN CHIARO':<25}" + RESET)
+    print(AZZURRO + "=" * 129 + RESET)
 
-    for servizio, credenziale in dati_cifrati.items():
-        try:
-            from ENGINE.security import decifra_password
-            password_in_chiaro = decifra_password(credenziale["password"])
-        except Exception:
-            password_in_chiaro = "[Errore Decifratura]"
+    for proprietario, domini in all_dati.items():
+        for servizio, credenziale in domini.items():
+            try:
+                from ENGINE.security import decifra_password
+                password_in_chiaro = decifra_password(credenziale["password"])
+            except Exception:
+                password_in_chiaro = "[Errore Decifratura]"
 
-        username = credenziale.get("username", "[N/A]")
-        # Applichiamo la formattazione a 50 caratteri per l'username
-        print(f"{servizio:<30} | {username:<50} | {password_in_chiaro:<25}")
+            username = credenziale.get("username", "[N/A]")
 
-    print(AZZURRO + "=" * 112 + RESET)
+            # AGGIORNATO: Aggiunta l'icona 🌐 prima del nome del servizio/dominio
+            dominio_con_icona = f"🌐 {servizio}"
+
+            print(f"{proprietario:<20} | {dominio_con_icona:<34} | {username:<40} | {password_in_chiaro:<25}")
+
+    print(AZZURRO + "=" * 129 + RESET)
     input("\n⌨️  Premere Invio per tornare al menu principale...")
 
 
