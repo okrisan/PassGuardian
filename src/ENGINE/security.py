@@ -1,5 +1,8 @@
 # src/security.py
 import re
+import hashlib
+from cryptography.fernet import Fernet
+import os
 
 
 class PhishingDetector:
@@ -69,3 +72,27 @@ class PhishingDetector:
                 return False, f"⚠️ ATTENZIONE PHISHING: Il dominio '{dominio}' è incredibilmente simile a quello ufficiale '{protetto}'!"
 
         return True, f"Dominio analizzato: {dominio} (Nessun pattern di phishing immediato)"
+# Sostituisci la vecchia riga con questa (questa è una chiave valida a 32-byte in base64)
+CHIAVE_SEGRETA = b'uK3N2_r8X4Mv5mW9F7zB3kL2pQ1sT6uV8xZ4yW2eR1A='
+cipher_suite = Fernet(CHIAVE_SEGRETA)
+
+def hash_master_password(password_in_chiaro: str) -> str:
+    """Crea un hash sicuro (SHA-256) della Master Password. Non è invertibile."""
+    return hashlib.sha256(password_in_chiaro.encode()).hexdigest()
+
+def cifra_password(password_in_chiaro: str) -> str:
+    """Cifra una password del vault e la trasforma in una stringa illeggibile."""
+    if not password_in_chiaro:
+        return ""
+    token = cipher_suite.encrypt(password_in_chiaro.encode())
+    return token.decode() # Trasformata in stringa per salvarla nel JSON
+
+def decifra_password(password_cifrata: str) -> str:
+    """Decifra una password dal vault per l'autofill o per il Super User."""
+    if not password_cifrata:
+        return ""
+    try:
+        decoded_token = cipher_suite.decrypt(password_cifrata.encode())
+        return decoded_token.decode()
+    except Exception:
+        return "[ERRORE DECRITTAZIONE]"
