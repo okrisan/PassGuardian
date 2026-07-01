@@ -1,0 +1,13 @@
+Elementi mancanti o da implementare per rispettare i requisiti del docente:
+
+1. GERARCHIA DI EREDITARIETÀ (Requisito NON negoziabile - Max 6 Punti OOP)
+   - Cosa richiede la traccia: Una classe base e almeno due sottoclassi concrete.
+     Deve esserci un metodo polimorfico ereditato (override) e l'uso di super().
+   - Cosa manca: Attualmente PassGuardian usa classi singole (OOP standard). 
+     Dobbiamo strutturare un'ereditarietà reale (es. una classe base Cifrario
+     da cui ereditano CifrarioFernet e CifrarioCesare/XOR).
+
+2. TEST UNITARI (Max 3 Punti)
+   - Cosa richiede la traccia: Creare una cartella 'tests/' con all'interno i test
+     gestiti tramite 'pytest'. Almeno un test deve verificare il polimorfismo.
+   - Cosa manca: Manca l'intera suite di test automatizzati per il codice.
