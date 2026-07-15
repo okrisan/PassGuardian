@@ -1,0 +1,13 @@
+# PassGuardian - dipendenze
+# Interfaccia grafica
+customtkinter>=5.2.0
+
+# Cifratura credenziali (usata da ENGINE/security.py)
+cryptography>=41.0.0
+
+# Copia negli appunti (pulsanti "Copia Password" / "Copia Username")
+pyperclip>=1.8.0
+
+# --- Opzionali: usate solo dalla vecchia versione CLI (main_cli.py) ---
+# pyautogui>=0.9.54
+# pygetwindow>=0.0.9

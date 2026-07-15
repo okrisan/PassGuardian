@@ -1,0 +1,12 @@
+{
+    "admin": {
+        "linux": {
+            "ip": "172.20.129.52",
+            "ssh_username": "ubuntu",
+            "password": "gAAAAABqVk2YlA7AfhmBL82TwQzn58P5OahPw3Kx7r88-SINzTmqVM1rzll7vUD95pMq0dK4qI3PtvR3yoe9ErV9Lx2DUthPBg==",
+            "porta": 22,
+            "chiave_privata": "",
+            "note": ""
+        }
+    }
+}
