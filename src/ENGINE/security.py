@@ -1,98 +1,92 @@
-# src/security.py
-import re
+"""Funzioni di sicurezza per cifrare e decifrare password."""
+
+from __future__ import annotations
+
+import base64
+import binascii
 import hashlib
-from cryptography.fernet import Fernet
+import hmac
 import os
 
+_SALT_LEN = 16
+_NONCE_LEN = 16
+_TAG_LEN = 32
+_PBKDF2_ITERATIONS = 200_000
+_VERSIONE_TOKEN = "v1"
 
-class PhishingDetector:
-    """
-    Modulo di sicurezza per l'analisi dei domini e la prevenzione del phishing.
-    Sfrutta Regex e analisi delle stringhe (Distanza di Levenshtein).
-    """
 
-    def __init__(self):
-        # Lista di domini famosi spesso bersaglio di phishing
-        self.domini_protetti = ["google.com", "paypal.com", "github.com", "netflix.com", "amazon.com", "poste.it"]
+def _deriva_chiave(master_password: str, salt: bytes) -> bytes:
+    """Deriva una chiave simmetrica da Master Password con PBKDF2-HMAC-SHA256."""
+    return hashlib.pbkdf2_hmac(
+        "sha256",
+        master_password.encode("utf-8"),
+        salt,
+        _PBKDF2_ITERATIONS,
+        dklen=32,
+    )
 
-    def estrai_dominio(self, testo_input):
-        """
-        Usa una REGEX per estrarre solo il dominio principale (es. google.com)
-        anche se l'utente incolla un URL lungo come https://www.google.com/login
-        """
-        if not testo_input:
-            return ""
 
-        # Rimuove http, https, www e tutto ciò che viene dopo il dominio
-        pattern = r"^(?:https?://)?(?:www\.)?([^/:\?#]+)"
-        match = re.search(pattern, testo_input.strip().lower())
-        if match:
-            dominio = match.group(1)
-            # Prende solo le ultime due parti (es. mail.google.com -> google.com)
-            parti = dominio.split('.')
-            if len(parti) > 2:
-                return ".".join(parti[-2:])
-            return dominio
-        return testo_input.strip().lower()
+def _genera_keystream(chiave: bytes, nonce: bytes, lunghezza: int) -> bytes:
+    """Genera uno stream pseudocasuale con HMAC-SHA256 in modalità contatore."""
+    blocchi: list[bytes] = []
+    contatore = 0
+    totale = 0
 
-    def calcola_distanza(self, s1, s2):
-        """Algoritmo di Levenshtein per calcolare la somiglianza tra due stringhe."""
-        if len(s1) < len(s2):
-            return self.calcola_distanza(s2, s1)
-        if len(s2) == 0:
-            return len(s1)
+    while totale < lunghezza:
+        blocco = hmac.new(
+            chiave,
+            nonce + contatore.to_bytes(4, "big"),
+            hashlib.sha256,
+        ).digest()
+        blocchi.append(blocco)
+        totale += len(blocco)
+        contatore += 1
 
-        linea_precedente = range(len(s2) + 1)
-        for i, c1 in enumerate(s1):
-            linea_corrente = [i + 1]
-            for j, c2 in enumerate(s2):
-                inserimenti = linea_precedente[j + 1] + 1
-                eliminazioni = linea_corrente[j] + 1
-                sostituzioni = linea_precedente[j] + (c1 != c2)
-                linea_corrente.append(min(inserimenti, eliminazioni, sostituzioni))
-            linea_precedente = linea_corrente
-        return linea_precedente[-1]
+    return b"".join(blocchi)[:lunghezza]
 
-    def verifica_dominio(self, url_utente):
-        """Controlla se il dominio assomiglia in modo sospetto a uno protetto."""
-        dominio = self.estrai_dominio(url_utente)
 
-        if not dominio:
-            return True, "Input vuoto o non valido."
+def cifra_password(password_chiaro: str, master_password: str) -> str:
+    """Cifra una password in chiaro e restituisce un token serializzabile."""
+    salt = os.urandom(_SALT_LEN)
+    nonce = os.urandom(_NONCE_LEN)
+    chiave = _deriva_chiave(master_password, salt)
 
-        # Se è identico a un dominio protetto, è sicuro
-        if dominio in self.domini_protetti:
-            return True, f"Dominio ufficiale e verificato: {dominio}"
+    plaintext = password_chiaro.encode("utf-8")
+    keystream = _genera_keystream(chiave, nonce, len(plaintext))
+    ciphertext = bytes(p ^ k for p, k in zip(plaintext, keystream, strict=False))
 
-        # Controlla typosquatting (somiglianza visiva)
-        for protetto in self.domini_protetti:
-            distanza = self.calcola_distanza(dominio, protetto)
-            # Se la distanza è 1 o 2, le stringhe sono quasi identiche
-            if 0 < distanza <= 2:
-                return False, f"⚠️ ATTENZIONE PHISHING: Il dominio '{dominio}' è incredibilmente simile a quello ufficiale '{protetto}'!"
+    tag = hmac.new(chiave, nonce + ciphertext, hashlib.sha256).digest()
+    payload = salt + nonce + ciphertext + tag
+    payload_b64 = base64.urlsafe_b64encode(payload).decode("ascii")
+    return f"{_VERSIONE_TOKEN}:{payload_b64}"
 
-        return True, f"Dominio analizzato: {dominio} (Nessun pattern di phishing immediato)"
-# Sostituisci la vecchia riga con questa (questa è una chiave valida a 32-byte in base64)
-CHIAVE_SEGRETA = b'uK3N2_r8X4Mv5mW9F7zB3kL2pQ1sT6uV8xZ4yW2eR1A='
-cipher_suite = Fernet(CHIAVE_SEGRETA)
 
-def hash_master_password(password_in_chiaro: str) -> str:
-    """Crea un hash sicuro (SHA-256) della Master Password. Non è invertibile."""
-    return hashlib.sha256(password_in_chiaro.encode()).hexdigest()
+def decifra_password(password_cifrata: str, master_password: str) -> str:
+    """Decifra un token password e restituisce la password in chiaro."""
+    prefisso = f"{_VERSIONE_TOKEN}:"
+    if not password_cifrata.startswith(prefisso):
+        raise ValueError("Formato password cifrata non supportato.")
 
-def cifra_password(password_in_chiaro: str) -> str:
-    """Cifra una password del vault e la trasforma in una stringa illeggibile."""
-    if not password_in_chiaro:
-        return ""
-    token = cipher_suite.encrypt(password_in_chiaro.encode())
-    return token.decode() # Trasformata in stringa per salvarla nel JSON
-
-def decifra_password(password_cifrata: str) -> str:
-    """Decifra una password dal vault per l'autofill o per il Super User."""
-    if not password_cifrata:
-        return ""
+    payload_b64 = password_cifrata[len(prefisso) :]
     try:
-        decoded_token = cipher_suite.decrypt(password_cifrata.encode())
-        return decoded_token.decode()
-    except Exception:
-        return "[ERRORE DECRITTAZIONE]"
+        payload = base64.urlsafe_b64decode(payload_b64.encode("ascii"))
+    except binascii.Error as exc:
+        raise ValueError("Payload cifrato non decodificabile.") from exc
+
+    min_len = _SALT_LEN + _NONCE_LEN + _TAG_LEN
+    if len(payload) < min_len:
+        raise ValueError("Payload cifrato non valido.")
+
+    salt = payload[:_SALT_LEN]
+    nonce = payload[_SALT_LEN : _SALT_LEN + _NONCE_LEN]
+    tag = payload[-_TAG_LEN:]
+    ciphertext = payload[_SALT_LEN + _NONCE_LEN : -_TAG_LEN]
+
+    chiave = _deriva_chiave(master_password, salt)
+    tag_atteso = hmac.new(chiave, nonce + ciphertext, hashlib.sha256).digest()
+    if not hmac.compare_digest(tag, tag_atteso):
+        raise ValueError("Master Password errata o dati alterati.")
+
+    keystream = _genera_keystream(chiave, nonce, len(ciphertext))
+    plaintext = bytes(c ^ k for c, k in zip(ciphertext, keystream, strict=False))
+    return plaintext.decode("utf-8")

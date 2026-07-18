@@ -1,0 +1,6 @@
+pytest==8.2.0
+cryptography==42.0.5
+pyperclip==1.9.0
+pyautogui==0.9.54
+customtkinter==5.2.0
+pillow==10.3.0
