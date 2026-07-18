@@ -6,7 +6,6 @@ from typing import Any
 from ENGINE.utils import calcola_distanza_levenshtein
 from .base import VaultEntry
 from ENGINE.output_manager import eroga_in_clipboard, eroga_tramite_tastiera, esegui_autofill_completo
-from GUI.screens.countdown_dialog import CountdownDialog
 import re
 
 
@@ -87,13 +86,22 @@ class WebLoginEntry(VaultEntry):
     def dettagli_tabella(self) -> str:
         return f"URL: {self.url}"  # Oppure "N/A"
     
-    def esegui_autofill(self, parent_window) -> None:
-        """Avvia il conto alla rovescia grafico per l'autofill Web."""
-            
+    # RIMUOVI QUESTO IMPORT IN ALTO: from GUI.screens.countdown_dialog import CountdownDialog
 
-        # Lanciamo il popup grafico
-        CountdownDialog(parent=parent_window, secondi=3, callback_successo=lambda: esegui_autofill_completo(username=self.username, password=self.password_cifrata))
-    
+    def esegui_autofill(self, callback_attesa: callable = None) -> None:
+        """Predispone l'autofill delegando l'attesa al chiamante."""
+        azione_finale = lambda: esegui_autofill_completo(
+            username=self.username, 
+            password=self.password_cifrata
+        )
+        
+        # Se chi chiama (la GUI) ci passa un meccanismo di attesa, lo usiamo
+        if callback_attesa:
+            callback_attesa(azione_finale)
+        else:
+            # Fallback per la CLI o esecuzione diretta senza attesa grafica
+            azione_finale()
+
     def corrisponde_a_ricerca(self, testo: str) -> bool:
         """Verifica se il testo è presente nel titolo, username o nell'URL."""
         t = testo.lower()

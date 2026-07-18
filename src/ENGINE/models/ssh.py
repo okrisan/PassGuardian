@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 from .base import VaultEntry
 from ENGINE.output_manager import eroga_in_clipboard, eroga_tramite_tastiera, esegui_autofill_ssh
-from GUI.screens.countdown_dialog import CountdownDialog
 import re
 
 
@@ -71,13 +70,21 @@ class SSHLoginEntry(VaultEntry):
     def dettagli_tabella(self) -> str:
         return f"Port: {self.port}"
     
-    def esegui_autofill(self, parent_window) -> None:
-        """Avvia il conto alla rovescia grafico per la sessione SSH."""
-    
-        CountdownDialog(parent=parent_window, secondi=4, callback_successo=lambda: esegui_autofill_ssh(
-                username=self.username, host=self.host, 
-                porta=self.port, password=self.password_cifrata
-            ))
+    # RIMUOVI QUESTO IMPORT IN ALTO: from GUI.screens.countdown_dialog import CountdownDialog
+
+    def esegui_autofill(self, callback_attesa: callable = None) -> None:
+        """Predispone l'autofill SSH delegando l'attesa al chiamante."""
+        azione_finale = lambda: esegui_autofill_ssh(
+            username=self.username, 
+            host=self.host, 
+            porta=self.port, 
+            password=self.password_cifrata
+        )
+        
+        if callback_attesa:
+            callback_attesa(azione_finale)
+        else:
+            azione_finale()
         
     def corrisponde_a_ricerca(self, testo: str) -> bool:
         """Verifica se il testo corrisponde a titolo, username o all'IP/Host."""
