@@ -8,7 +8,7 @@
 
 Il codice è organizzato in una struttura a moduli pulita:
 
-
+```text
 PassGuardian/
 │
 ├── database/
@@ -41,7 +41,7 @@ PassGuardian/
 │
 ├── requirements.txt          # Dipendenze del progetto
 └── README.md                 # Questa documentazione
-
+```
 
 ## Funzionalità Principali
 
@@ -49,11 +49,12 @@ PassGuardian/
 1. Separazione Moduli (Architettura Decoupled)
 L'ENGINE è completamente agnostico rispetto all'interfaccia visiva. Non importa moduli grafici come tkinter o customtkinter. La GUI comunica con l'ENGINE tramite iniezione di dipendenze e chiamate polimorfiche. L'attesa temporizzata per lo Smart Autofill viene passata dall'interfaccia al modello tramite espressioni lambda, mantenendo il codice del core pulito e privo di vincoli visivi.
 
-2. Erogazione Polimorfica e SicuraWeb Login Entry: Ottimizzato per la gestione di credenziali internet con controlli anti-phishing integrati basati sulla distanza di Levenshtein.SSH Login Entry: Integra controlli sintattici per validare host e indirizzi IP, gestendo porte personalizzate per i server.Le credenziali supportano molteplici metodi di output sicuri: copia temporizzata negli appunti o simulazione hardware di digitazione sulla tastiera (Smart Autofill).
+2. Erogazione Polimorfica e SicuraWeb Login Entry: Ottimizzato per la gestione di credenziali internet con controlli anti-phishing integrati basati sulla distanza di Levenshtein. Integra controlli sintattici per validare host e indirizzi IP, gestendo porte personalizzate per i server. 
+Le credenziali supportano molteplici metodi di output sicuri: copia temporizzata negli appunti o simulazione hardware di digitazione sulla tastiera (Smart Autofill).
 
 
-3. Protezione Anti-Phishing AvanzataCerca e Controlla: Inserendo un URL nella barra superiore, l'applicazione ne estrae il dominio principale e lo analizza in tempo reale.Whitelist Centralizzata: L'app confronta l'URL sia con il database personale dell'utente che con un file globale database/whitelist.json. Se viene rilevato un tentativo di Typosquatting (un dominio contraffatto che imita un brand noto con una distanza $\le 2$), l'interfaccia si congela mostrando un avviso critico di sicurezza a schermo per proteggere l'utente.🚀 Installazione e SetupRequisitiPython 3.12 o superiore
-
+3. Protezione Anti-Phishing AvanzataCerca e Controlla: Inserendo un URL nella barra superiore, l'applicazione ne estrae il dominio principale e lo analizza in tempo reale.
+L'app confronta l'URL sia con il database personale dell'utente che con un file globale database/whitelist.json. Se viene rilevato un tentativo di Typosquatting (un dominio contraffatto che imita un brand noto con una distanza $\le 2$), l'interfaccia si congela mostrando un avviso critico di sicurezza a schermo per proteggere l'utente.
 
 
 
