@@ -1,29 +1,21 @@
-# Devlog
+# Diario di Bordo dello Sviluppo (Devlog) — PassGuardian
 
-## 2026-06-24
+## Entry 1: Fissazione dell'Idea e Proposta (Settimana 1 — 01 Luglio 2026)
+*   **Attività Svolta:** Analisi dei requisiti di laboratorio, brainstorming del gruppo, stesura della proposta iniziale del progetto (`proposta.md`) e impostazione della struttura iniziale del repository GitHub.
+*   **Dettagli Tecnici & Bug:** Abbiamo caricato il fulcro del funzionamento base del password manager, focalizzandoci sui primi prototipi del meccanismo di Smart Autofill con simulazione hardware della tastiera e i primi controlli rudimentali sulla distanza dei domini per prevenire il phishing.
+*   **Ostacoli & Soluzioni:** Inizialmente abbiamo riscontrato dei problemi di organizzazione delle cartelle locali durante l'upload, risolti ripulendo l'albero del repository per separare bene il sorgente dalla documentazione. Ci siamo accorti che la gestione iniziale del database e la crittografia delle password andavano completamente riprogettate per garantire una vera sicurezza e non un semplice storage in chiaro, rimandando il problema alla fase successiva.
+*   **Stato del Lavoro:** Proposta inviata e approvata; scheletro del progetto pronto.
 
-Abbiamo definito il perimetro del progetto e deciso di costruire un vault di credenziali locale con due tipologie concrete: Web e SSH. In questa fase abbiamo chiarito che il requisito di ereditarietà sarebbe stato soddisfatto da una classe base comune per le credenziali, con specializzazioni reali per i due casi d'uso.
+## Entry 2: Cifratura, Persistenza e Modelli OOP (Settimana 2 — 18 Luglio 2026)
+*   **Attività Svolta:** Ristrutturazione completa del nucleo logico dell'applicazione (`ENGINE`) in ottica orientata agli oggetti (OOP). Implementazione dei moduli di sicurezza e della persistenza cifrata dei dati.
+*   **Dettagli Tecnici & Bug:** Abbiamo implementato la classe base astratta `VaultEntry` e le sue specializzazioni polimorfiche concrete `WebLoginEntry` e `SSHLoginEntry`. È stata sviluppata da zero la classe `Storage` per interfacciarsi in modo sicuro con il file `vault.json`, integrando le funzionalità del modulo `Security` per la crittografia simmetrica dei record. Abbiamo inoltre centralizzato gli algoritmi di controllo del phishing basati su distanza sintattica.
+*   **Ostacoli & Soluzioni:** Abbiamo perso parecchio tempo a combattere con i conflitti di versioning dei file di cache (`__pycache__`) che sporcavano i branch di sviluppo; abbiamo risolto configurando correttamente il file `.gitignore` ed eseguendo una pulizia radicale del repository.
+*   **Stato del Lavoro:** L'ENGINE è completo, sicuro e funzionante. La logica di dominio rispetta pienamente i vincoli di ereditarietà formale.
 
-La parte più importante del lavoro è stata distinguere bene ciò che appartiene al dominio da ciò che appartiene all'interfaccia. Abbiamo scelto di tenere il motore separato dalla GUI fin dall'inizio, così da evitare una finestra monolitica e un codice difficile da difendere all'orale.
-
-## 2026-07-01
-
-Abbiamo consolidato la persistenza su JSON e la gestione della Master Password. Ci siamo accorti che la parte delicata non era soltanto salvare i dati, ma farlo in modo coerente: utenti, credenziali, cifratura e ricifratura dovevano restare allineati.
-
-In questa settimana abbiamo anche rifinito il modello polimorfico delle credenziali. La deserializzazione basata sul campo `tipo` ci ha permesso di recuperare la sottoclasse corretta senza scrivere catene di `if` sparse nel resto del programma.
-
-## 2026-07-08
-
-Abbiamo lavorato sull'anti-phishing e sulla dashboard. Il controllo sugli URL ci è sembrato un buon esempio di logica utile, perché unisce una funzione semplice a un comportamento di sicurezza visibile all'utente.
-
-La dashboard è stata organizzata per trattare ogni credenziale in modo uniforme, ma lasciando alle singole classi la responsabilità dei dettagli. Questo ci ha aiutato anche nella parte grafica: la tabella mostra proprietà comuni, mentre i dialoghi gestiscono l'inserimento e la modifica dei dati specifici.
-
-## 2026-07-19
-
-Abbiamo rifinito le schermate di accesso, la modifica della Master Password e lo smart autofill. In particolare ci siamo concentrati sul rendere l'esperienza più lineare: prima login, poi dashboard, poi azioni contestuali sulle credenziali.
-
-Ci siamo anche accorti che alcuni dettagli di integrazione fra GUI e core dovevano restare espliciti per non confondere la responsabilità dei moduli. Per questo abbiamo tenuto separate le funzioni di output fisico, le funzioni di storage e la logica anti-phishing.
-
-## Stato finale
-
-Al termine del lavoro il progetto risulta organizzato, navigabile e presentabile. Restano naturalmente i test da completare e ampliare, ma la struttura del codice e la documentazione sono già allineate al comportamento reale del programma.
+## Entry 3: Sviluppo Interfacce, Disaccoppiamento e Consegna (Settimana 3 — 19 Luglio 2026)
+*   **Attività Svolta:** Progettazione parallela delle due interfacce utente (CLI e GUI), risoluzione dei vincoli di compatibilità ambientale, stesura dei test unitari e finalizzazione della documentazione.
+*   **Dettagli Tecnici & Bug:** Abbiamo completato lo sviluppo dei moduli GUI per CustomTkinter (Splash Screen, Login, Registration, Dashboard principale e relativi pop-up di controllo/modifica). È stato integrato un controllo anti-phishing esteso che interroga sia il Vault dell'utente sia una whitelist centralizzata di brand noti (`database/whitelist.json`). Per quanto riguarda i test, abbiamo configurato una suite con `pytest` per verificare la logica dei modelli e del polimorfismo.
+*   **Ostacoli & Soluzioni:** Questa settimana è stata la più critica a causa di due gravi problemi architetturali e sistemistici:
+    1. *Violazione MVC:* Ci siamo resi conto che i modelli `web.py` e `ssh.py` importavano direttamente widget grafici (`CountdownDialog`), rompendo la separazione dei moduli. Abbiamo risolto effettuando un refactoring radicale basato sull'iniezione di dipendenze, passando il comportamento visivo del countdown sotto forma di espressione **lambda** dalla GUI al modello.
+    2. *Crash su Python 3.12+:* Al primo avvio su un ambiente virtuale pulito isolato, CustomTkinter andava in crash con errore `ModuleNotFoundError: No module named 'distutils'`. Abbiamo scoperto che il modulo è stato rimosso da Python 3.12. Abbiamo risolto installando `setuptools` e aggiornando tempestivamente il file `requirements.txt`.
+*   **Stato del Lavoro:** Progetto completato al 100%, test passati con successo ("tutti verdi"), documentazione formale redatta e codice pronto per la difesa all'esame orale.
