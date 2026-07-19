@@ -293,8 +293,8 @@ class Dashboard(ctk.CTkFrame):
 
         entry = self.credenziali_caricate[int(selezionato[0])]
         
-        # Determiniamo dinamicamente i secondi di attesa (3 per Web, 4 per SSH)
-        secondi = 3 if isinstance(entry, WebLoginEntry) else 4
+        # Determiniamo dinamicamente i secondi di attesa (5 per Web, 5 per SSH)
+        secondi = 5 
 
         # Invochiamo il modello passando la lambda che istanzia la View grafica
         entry.esegui_autofill(

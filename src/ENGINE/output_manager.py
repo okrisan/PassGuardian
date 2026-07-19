@@ -13,17 +13,16 @@ def eroga_in_clipboard(password: str, secondi: int = 15) -> None:
     Copia la password nella clipboard e avvia un thread in background 
     per sovrascriverla e cancellarla dopo il tempo stabilito.
     """
-    return pyperclip.copy(password)
-   
+    pyperclip.copy(password)
+    # Avvia il thread in background in modalità daemon
+    threading.Thread(target=cancella_clipboard, args=(password, secondi), daemon=True).start()
 
-def cancella_clipboard(password: str, secondi: int = 15):
+
+def cancella_clipboard(password: str, secondi: int):
     time.sleep(secondi)
     # Verifica se negli appunti c'è ancora la password prima di cancellare
     if pyperclip.paste() == password:
-        pyperclip.copy("")
-
-    # Avvia il thread in background in modalità daemon
-    threading.Thread(target=cancella_clipboard, daemon=True).start()
+        pyperclip.copy("") 
 
 def _ripristina_o_svuota_clipboard(vecchio_contenuto: str):
     """ Ripristina la clipboard dell'utente o la cancella del tutto per sicurezza. """
@@ -31,7 +30,7 @@ def _ripristina_o_svuota_clipboard(vecchio_contenuto: str):
         pyperclip.copy(vecchio_contenuto)
     else:
         # Se non c'era nulla, forziamo la pulizia reale del buffer di Windows/Linux
-        pyperclip.copy("") 
+        pyperclip.copy("")
         # Trick aggiuntivo per determinati OS: pulizia tramite ctypes se necessario,
         # ma pyperclip.copy("") dopo aver iniettato testo di solito basta a sovrascrivere.
         # Per massima sicurezza, iniettiamo uno spazio invisibile o puliamo.
